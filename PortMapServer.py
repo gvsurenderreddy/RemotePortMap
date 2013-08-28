@@ -9,6 +9,9 @@ import threading
 import logging
 
 REMOTE_LISTEN_PORT = 8089
+HOST_PORT = 8695
+TARGET_ADDR = ('localhost', 9536)
+
 
 LOG = Unity.SetDefaultLogger()
 BACK_LOG = 5
@@ -237,8 +240,8 @@ def Main():
 
 			LOG.info('setting new map...')
 			map_ID = main_h.NewMap(
-				target_addr = ('localhost', 8087),
-				host_addr = ('',8695),
+				target_addr = TARGET_ADDR,
+				host_addr = ('',HOST_PORT),
 				host_reuse_addr = True,
 				remote_listen_addr=('localhost',0)
 			)

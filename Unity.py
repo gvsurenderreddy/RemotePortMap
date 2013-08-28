@@ -23,7 +23,7 @@ def Enum(name_list):
 	v_iter = iter(v_range)
 	return {name:next(v_iter) for name in name_list }
 
-def SetDefaultLogger(log_lev = logging.DEBUG-1):
+def SetDefaultLogger(log_lev = logging.INFO):
 	'''
 	@return: logger
 	'''

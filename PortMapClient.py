@@ -197,7 +197,7 @@ class MainHandler(Protocol.BaseMainHandler):
 		self._AddConnecting(thread, socket_id)
 		thread.start()
 
-if __name__ == '__main__':
+def Main():
 	def handler(_s):
 		if not _s is None:
 			h = MainHandler(_s, logger=LOG)
@@ -206,3 +206,6 @@ if __name__ == '__main__':
 						   handler,
 						   Protocol.ClientShakeHand,
 						   try_times = 999999).start()
+
+if __name__ == '__main__':
+	Main()
