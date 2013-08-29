@@ -92,7 +92,7 @@ class MapHandler(Protocol.BaseMapHandler):
 		super().__init__(*args, **kwargs)
 
 		target_addr = self.target_addr
-		self._Log(logging.INFO, 'Map link start, target [%s:%d], remote address [%s:%d]',
+		self._Log(logging.WARN, 'Map link start, target [%s:%d], remote address [%s:%d]',
 				  target_addr[0],target_addr[1], *self.socket.getpeername())
 
 	def _SetProtocolHandlerDict(self):

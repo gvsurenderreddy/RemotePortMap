@@ -64,7 +64,7 @@ class MapHandler(Protocol.BaseMapHandler):
 		self.id_set = Unity.IDGenerator(max_ID)
 
 		# listen host
-		self._Log(logging.INFO, 'Map link start!, host port [%d], target [%s:%d], remote address [%s:%d]',
+		self._Log(logging.WARN, 'New map link: host port [%d], target [%s:%d], remote address [%s:%d]',
 				  host_socket.getsockname()[1], target_addr[0],target_addr[1], *self.socket.getpeername())
 		self.host_socket = host_socket
 		# TODO:
@@ -91,8 +91,11 @@ class MapHandler(Protocol.BaseMapHandler):
 		return handler_dict
 
 	def _RunDisconnectedCallBack(self):
-		#TODO: Add connection information, such as address
-		LOG.info('Map ctrl connection disconnected from the server')
+		self._Log(logging.WARN, 'Map link close: [ID: %d], host port [%d], target [%s:%d], remote address [%s:%d]',
+				  self.
+				  self.host_socket.getsockname()[1],
+				  self.target_addr[0], self.target_addr[1],
+				  *self.socket.getpeername())
 		super()._RunDisconnectedCallBack()
 
 	def _DelSubConnInfo(self, ID):

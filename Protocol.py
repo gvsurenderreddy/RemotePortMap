@@ -549,6 +549,7 @@ class BaseMainHandler(BaseCtrlHandler):
 		try:
 			map_h_id = self.sub_conn_id_dict[map_h]
 			self._DelSubConnInfo(map_h_id)
-			self._Log(logging.INFO, 'Map ctrl disconnected: %d', map_h_id)
+			# This will be logged in MapCtrl when it is closing
+			#self._Log(logging.INFO, 'Map ctrl disconnected: %d', map_h_id)
 		except KeyError:
 			self._Log(logging.DEBUG, 'The key is not existed in sub_connect_dict.')
