@@ -1,1 +1,6 @@
-This file was created by PyCharm 2.7.3 for binding GitHub repository
+This project implemented a kind of reverse connection, like ssh -R, but the map can be control by server dynamically.
+
+TODO:
+Interactive environment and commandline args.
+Fix bug that some errors may be occurred when map a large number of connection.
+
