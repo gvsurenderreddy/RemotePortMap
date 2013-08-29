@@ -12,7 +12,8 @@ import Protocol
 __SERVER_ADDR = 'localhost'
 __SERVER_PORT = 8089
 
-LOG = Unity.SetDefaultLogger()
+LOG = logging.getLogger(__name__)
+Unity.SetDefaultLogger(LOG)
 
 class ThreadingConnectServer(threading.Thread):
 	def __init__(self, addr, handler, shake_hand_method = None,
@@ -46,12 +47,12 @@ class ThreadingConnectServer(threading.Thread):
 			if not self.is_running:
 				break
 			s = self.connect_socket
-			if not self.timeout_pre_try is None:
+			if self.timeout_pre_try is not None:
 				s.settimeout(self.timeout_pre_try)
 			try:
 				s.connect(addr)
 				# shake hand
-				if not self.shake_hand_method is None:
+				if self.shake_hand_method is not None:
 					LOG.info('shaking hand')
 					if self.shake_hand_method(s):
 						LOG.info('Connect success')
@@ -124,7 +125,7 @@ class MapHandler(Protocol.BaseMapHandler):
 	def _NewLink(self, msg_unpacker):
 		socket_id = msg_unpacker.ID
 		def ConnectedCallback(_socket):
-			if not _socket is None:
+			if _socket is not None:
 				self._ConnectingConfirm(socket_id, _socket)
 				confirm_message = Protocol.PackMapCtrlMsg('link_confirm', socket_id)
 				self._SelfSendData(confirm_message)
@@ -174,7 +175,7 @@ class MainHandler(Protocol.BaseMainHandler):
 		socket_id = msg_unpacker.ID
 		def ConnectedCallback(_socket, msg_unpacker = msg_unpacker):
 			self._Log(logging.DEBUG, 'Map connect successed! ID: %d', socket_id)
-			if not _socket is None:
+			if _socket is not None:
 				map_ctrl = MapHandler(
 					_socket=_socket,
 					target_addr=msg_unpacker.port_msg,
@@ -199,7 +200,7 @@ class MainHandler(Protocol.BaseMainHandler):
 
 def Main():
 	def handler(_s):
-		if not _s is None:
+		if _s is not None:
 			h = MainHandler(_s, logger=LOG)
 			h.Start(isDaemon = False)
 	ThreadingConnectServer((__SERVER_ADDR,__SERVER_PORT),

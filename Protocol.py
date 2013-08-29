@@ -8,7 +8,7 @@ import abc
 
 STR_ENCODING = 'utf-8'
 PORT_ENCODE_LEN = 2
-MAX_TCP_PACKAGE_LEN = 2 * 1024
+MAX_TCP_PACKAGE_LEN = 8* 1024
 ID_LEN = 2
 OPT_LEN = 1
 ADDR_LEN_LEN = 1
@@ -181,7 +181,7 @@ class BaseMsgUnpacker(metaclass = abc.ABCMeta):
 	def _Error(self, msg, *args, **kwargs):
 		self.has_error = True
 		log_prefix = type(self).__name__ + '\t'
-		if not self.logger is None:
+		if self.logger is  not None:
 			self.logger.error(log_prefix+msg, *args, **kwargs)
 
 	def _GetID(self):
@@ -225,7 +225,7 @@ class MapMsgUnpacker(BaseMsgUnpacker):
 
 class BaseCtrlHandler(metaclass = abc.ABCMeta):
 	global MAX_TCP_PACKAGE_LEN
-	recv_buf_len = 8 * 1024
+	recv_buf_len = 16 * 1024
 	CONN_OK = 0
 	CONN_CLOSE = 1
 	CONN_CONNECTING = 2
@@ -235,7 +235,6 @@ class BaseCtrlHandler(metaclass = abc.ABCMeta):
 		return BaseMsgUnpacker
 
 	def __init__(self, _socket, logger = None,data_sender_thread = None):
-		self.pack_buf = Unity.PackageJoin(4 * self.recv_buf_len, PACKAGE_LEN_LEN)
 
 		self.sub_conn_id_dict = {}
 		self.id_sub_conn_dict = {}
@@ -361,7 +360,8 @@ class BaseCtrlHandler(metaclass = abc.ABCMeta):
 			self._CloseConnecting(ID, inform_other)
 
 	def _ListenSelf(self):
-		def SockSelectHandler(_s):
+		pack_buf = Unity.PackageJoin(4 * self.recv_buf_len, PACKAGE_LEN_LEN)
+		def SockSelectHandler(_s, pack_buf = pack_buf):
 			'''
 			@type _s: socket, must equal to self.socket
 			'''
@@ -370,7 +370,9 @@ class BaseCtrlHandler(metaclass = abc.ABCMeta):
 				self._RunDisconnectedCallBack()
 				return False
 
-			self._Log(logging.DEBUG, 'Receive message from remote, handling...')
+			# TODO: How to ensure the handler will be run in serial?
+			# Add buffer for each thread
+			self._Log(logging.DEBUG - 3, 'Receive message from remote, handling...')
 			try:
 				buf = _s.recv(self.recv_buf_len)
 			except socket.error:
@@ -381,7 +383,7 @@ class BaseCtrlHandler(metaclass = abc.ABCMeta):
 				self._Log(logging.ERROR, 'Self socket has been closed from other, stop this handler.')
 				return StopHandler()
 
-			pack_l = self.pack_buf.Join(buf)
+			pack_l = pack_buf.Join(buf)
 			for pack in pack_l:
 				msg_unpacker = self.msg_unpacker_class(pack, self.logger)
 				self._DispatchPackage(msg_unpacker)
@@ -401,7 +403,7 @@ class BaseCtrlHandler(metaclass = abc.ABCMeta):
 
 	def _Log(self, log_level, msg, *args, **kwargs):
 		log_prefix = type(self).__name__ + ' :\t'
-		if not self.logger is None:
+		if self.logger is not None:
 			self.logger.log(log_level, log_prefix + msg, *args, **kwargs)
 
 	def _Error(self, msg, *args, **kwargs):
@@ -421,7 +423,7 @@ class BaseCtrlHandler(metaclass = abc.ABCMeta):
 		except KeyError:
 			self._Error('Unhand opt: %d', msg_unpacker.opt)
 		else:
-			if not handler is None:
+			if handler is not None:
 				try:
 					handler(msg_unpacker)
 				except AttributeError:
@@ -478,45 +480,45 @@ class BaseMapHandler(BaseCtrlHandler):
 		except socket.error:
 			pass
 
+	def _HostSockListener(self, _s):
+		'''
+		@type _s: socket.socket
+		'''
+		try:
+			_s_id = self.sub_conn_id_dict[_s]
+		except KeyError:
+			self._Log(logging.ERROR,'This socket is not recognized, ignored it. [%s:%d]',
+					  *_s.getpeername())
+			return False
+
+		try:
+			buf = _s.recv(self.recv_buf_len)
+		except socket.error:
+			self._Log(logging.ERROR,
+					  'Some errors do occur in this socket, closed it. [ID %d], [target %s:%d]',
+					  _s_id, *_s.getpeername())
+			self._CloseSubConn(_s_id, inform_other=True)
+			return False
+
+		if len(buf) == 0:
+			self._Log(logging.INFO,'This socket has been closed. [ID %d], [target %s:%d]',
+					  _s_id, *_s.getpeername())
+			self._CloseSubConn(_s_id, inform_other=True)
+			return False
+		else:
+			package_list = PackMapCtrlMsg('send_data', _s_id, buf, could_slit_msg=True)
+			for package in package_list:
+				self._SelfSendData(package)
+
+			self._Log(logging.DEBUG-1,'Send data from [%s:%d] to remote, size: %d , slit: %d',
+					  _s.getpeername()[0], _s.getpeername()[1], len(buf), len(package_list))
+			return True
+
 	def _ConnectingConfirm(self, connecting_id, new_conn):
-		def LinkSocketListener(_s):
-			'''
-			@type _s: socket.socket
-			'''
-			try:
-				_s_id = self.sub_conn_id_dict[_s]
-			except KeyError:
-				self._Log(logging.ERROR,'This socket is not recognized, ignored it. [%s:%d]',
-						  *_s.getpeername())
-				return False
-
-			try:
-				buf = _s.recv(self.recv_buf_len)
-			except socket.error:
-				self._Log(logging.ERROR,
-						  'Some errors do occur in this socket, closed it. [ID %d], [target %s:%d]',
-						  _s_id, *_s.getpeername())
-				self._CloseSubConn(_s_id, inform_other=True)
-				return False
-
-			if len(buf) == 0:
-				self._Log(logging.INFO,'This socket has been closed. [ID %d], [target %s:%d]',
-						  _s_id, *_s.getpeername())
-				self._CloseSubConn(_s_id, inform_other=True)
-				return False
-			else:
-				package_list = PackMapCtrlMsg('send_data', _s_id, buf, could_slit_msg=True)
-				for package in package_list:
-					self._SelfSendData(package)
-
-				self._Log(logging.DEBUG-1,'Send data from [%s:%d] to remote, size: %d , slit: %d',
-						  _s.getpeername()[0], _s.getpeername()[1], len(buf), len(package_list))
-				return True
-
 		# Must recode the connection before listen the socket
 		super()._ConnectingConfirm(connecting_id, new_conn)
 		s = self.id_sub_conn_dict[connecting_id]
-		self.sl.AddSocket(s, LinkSocketListener)
+		self.sl.AddSocket(s, self._HostSockListener)
 		# This socket will be closed when the connection is closed
 
 class BaseMainHandler(BaseCtrlHandler):

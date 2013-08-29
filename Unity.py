@@ -23,17 +23,15 @@ def Enum(name_list):
 	v_iter = iter(v_range)
 	return {name:next(v_iter) for name in name_list }
 
-def SetDefaultLogger(log_lev = logging.INFO):
+def SetDefaultLogger(logger, log_lev = logging.DEBUG -2):
 	'''
 	@return: logger
 	'''
 	log_format = logging.Formatter("%(asctime)s  %(levelname)s - %(message)s","%Y-%m-%d %H:%M:%S")
 	l_handler = logging.StreamHandler()
 	l_handler.setFormatter(log_format)
-	logger = logging.getLogger('default')
 	logger.setLevel(log_lev)
 	logger.addHandler(l_handler)
-	return logger
 
 def UIntToBytes(int_v, bytes_len = INT_ENCODE_LEN):
 	'''
@@ -247,7 +245,7 @@ class PackageJoin:
 					self.next_pack_len = BytesToInt(len_b) - self.head_len
 
 			msg = self.__TryGetMsg(self.next_pack_len)
-			if not msg is None:
+			if msg is not None:
 				self.next_pack_len = None
 				msg_list.append(msg)
 			else:
@@ -378,7 +376,7 @@ class ThreadingSocketSelect(threading.Thread):
 					for s in socket_list:
 						try:
 							handler = handler_dict[s]
-							if not handler is None:
+							if handler is not None:
 								if not handler(s):
 									# TODO: log?
 									handler_dict.pop(s)
@@ -386,7 +384,7 @@ class ThreadingSocketSelect(threading.Thread):
 							pass
 			else:
 				# IDLE
-				if not self.Idle_handle is None:
+				if self.Idle_handle is not None:
 					if not self.Idle_handle(self):
 						break
 				else:

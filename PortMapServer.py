@@ -10,10 +10,13 @@ import logging
 
 REMOTE_LISTEN_PORT = 8089
 HOST_PORT = 8695
-TARGET_ADDR = ('localhost', 9536)
+TARGET_ADDR = ('localhost', 8087)
 
 
-LOG = Unity.SetDefaultLogger()
+LOG = logging.getLogger(__name__)
+Unity.SetDefaultLogger(LOG)
+
+#TODO: How it influence the performance
 BACK_LOG = 5
 
 def ServerShakeHandWrap(_socket, callback):
@@ -64,6 +67,9 @@ class MapHandler(Protocol.BaseMapHandler):
 		self._Log(logging.INFO, 'Map link start!, host port [%d], target [%s:%d], remote address [%s:%d]',
 				  host_socket.getsockname()[1], target_addr[0],target_addr[1], *self.socket.getpeername())
 		self.host_socket = host_socket
+		# TODO:
+		# There may be a large number of socket in self.sl thread
+		# And it may be accept in a long interval
 		self.host_socket.listen( BACK_LOG )
 		self.sl.AddSocket(self.host_socket,
 						 self._HostNewConnectHandler
@@ -110,7 +116,7 @@ class MapHandler(Protocol.BaseMapHandler):
 			self._ConnectingConfirm(ID, s)
 			self._Log(logging.INFO, 'link confirm, ID: %d', ID)
 		except KeyError:
-			self._Error('Unrecognized ID in a link confirm package: %d', ID)
+			self._Error('Unrecognized ID in a link confirm package: [ID %d]', ID)
 
 	def _LinkRefuse(self, msg_unpacker):
 		try:
@@ -129,11 +135,13 @@ class MapHandler(Protocol.BaseMapHandler):
 	def _HostNewConnectHandler(self, _socket):
 		client, address = _socket.accept()
 		new_id = self.id_set.Gen()
+		self._AddConnecting(client, new_id)
+
+		new_link_msg = Protocol.PackMapCtrlMsg('new_link', new_id)
+		self._SelfSendData(new_link_msg)
+
 		self._Log(logging.INFO, 'New connected in map host port. allocated ID [%d], address [%s:%d]',
 				  new_id, *address)
-		new_link_msg = Protocol.PackMapCtrlMsg('new_link', new_id)
-		self._AddConnecting(client, new_id)
-		self._SelfSendData(new_link_msg)
 		# Now waiting for new link confirm message
 		# And still listen this socket
 		return True
@@ -175,7 +183,7 @@ class MainHandler(Protocol.BaseMainHandler):
 		new_id = self.id_set.Gen()
 
 		def RemoteMapConnectHandler(_s, ID = new_id, host_s = host_s, target_addr = target_addr):
-			if not _s is None:
+			if _s is not None:
 				map_h = MapHandler(
 					_socket=_s,
 					host_socket=host_s,
@@ -231,7 +239,7 @@ class MainHandler(Protocol.BaseMainHandler):
 
 def Main():
 	def MainHandleConnected(_s):
-		if not _s is None:
+		if _s is not None:
 			main_h = MainHandler(
 				_socket=_s,
 				logger=LOG
